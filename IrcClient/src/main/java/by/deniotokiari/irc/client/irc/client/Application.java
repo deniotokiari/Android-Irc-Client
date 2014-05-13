@@ -4,6 +4,4 @@ import by.istin.android.xcore.CoreApplication;
 
 public class Application extends CoreApplication {
 
-
-
 }

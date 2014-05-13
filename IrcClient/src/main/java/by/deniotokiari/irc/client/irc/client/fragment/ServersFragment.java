@@ -60,7 +60,7 @@ public class ServersFragment extends DialogFragment implements View.OnClickListe
 
         @Override
         public void onLoaderReset(Loader<Cursor> loader) {
-
+            mAdapter.swapCursor(null);
         }
     };
 
@@ -90,7 +90,7 @@ public class ServersFragment extends DialogFragment implements View.OnClickListe
         btnCancel.setOnClickListener(this);
         btnAdd.setOnClickListener(this);
 
-        mAdapter = new SimpleCursorAdapter(activity, mLoaderFragment.getVireL,,,,, 2);
+        mAdapter = new SimpleCursorAdapter(activity, android.R.layout.simple_list_item_2, null, new String[]{Server.NAME, Server.PORT}, new int[]{android.R.id.text1, android.R.id.text2}, 2);
         mServers.setAdapter(mAdapter);
     }
 
@@ -122,11 +122,12 @@ public class ServersFragment extends DialogFragment implements View.OnClickListe
 
     @Override
     public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-
+        //TODO: open connect to this server
     }
 
     @Override
     public boolean onItemLongClick(AdapterView<?> adapterView, View view, int i, long l) {
+        //TODO show dialog (delete, edit)
         return false;
     }
 
