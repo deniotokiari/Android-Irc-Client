@@ -1,1 +1,1 @@
-include ':IrcClient', ':Irc'
+include ':IrcClient'

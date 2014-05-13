@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="by.deniotokiari.irc.client.irc.client">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
     <application
         android:name=".Application"
         android:allowBackup="true"
@@ -19,9 +22,11 @@
         </activity>
         <provider
             android:name=".provider.AppProvider"
-            android:authorities="by.deniotokiari.android.shikimoriorgclient.ModelContentProvider"
+            android:authorities="by.deniotokiari.irc.client.irc.client.ModelContentProvider"
             android:exported="false" />
+
         <service android:name="by.istin.android.xcore.service.DataSourceService" />
+        <service android:name=".service.IrcService" />
     </application>
 
 </manifest>

@@ -1,4 +1,4 @@
-package by.deniotokiari.java.irc;
+package by.deniotokiari.irc.client.irc.client.irc;
 
 public enum Command {
 

@@ -1,4 +1,6 @@
-package by.deniotokiari.irc;
+package by.deniotokiari.irc.client.irc.client.irc;
+
+import android.content.ContentValues;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -8,6 +10,8 @@ import java.net.Socket;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class IrcClient extends Thread {
+
+    private ContentValues mContentValues;
 
     private EventListener mEventListener;
 
@@ -21,7 +25,9 @@ public class IrcClient extends Thread {
 
     private AtomicBoolean mIsRunning;
 
-    public IrcClient(String host, int port, EventListener eventListener) {
+    public IrcClient(ContentValues values, String host, int port, EventListener eventListener) {
+        mContentValues = values;
+
         mHost = host;
         mPort = port;
 
@@ -48,8 +54,12 @@ public class IrcClient extends Thread {
                 sendEvent(EventListener.EVENT.RECEIVE, msg);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            sendEvent(EventListener.EVENT.ERROR, new Exception("error"));
         }
+    }
+
+    public ContentValues getContentValues() {
+        return mContentValues;
     }
 
     public synchronized void connect() {
@@ -68,16 +78,16 @@ public class IrcClient extends Thread {
 
     public synchronized void disconnect() {
         try {
-            interrupt();
-
             mIsRunning.set(false);
-
-            mSocket.close();
 
             mOut.close();
             mIn.close();
 
+            mSocket.close();
+
             sendEvent(EventListener.EVENT.DISCONNECTED, mHost, mPort);
+
+            interrupt();
         } catch (Exception e) {
             sendEvent(EventListener.EVENT.ERROR, new Exception("error"));//TODO: imp
         }
@@ -94,13 +104,13 @@ public class IrcClient extends Thread {
     }
 
     private synchronized void sendEvent(EventListener.EVENT event, Object... args) {
-        if (mEventListener != null && mIsRunning.get()) {
+        if (mEventListener != null) {
             switch (event) {
                 case CONNECTED:
-                    mEventListener.onConnected((String) args[0], (Integer) args[1]);
+                    mEventListener.onConnected(this, (String) args[0], (Integer) args[1]);
                     break;
                 case DISCONNECTED:
-                    mEventListener.onDisconnected((String) args[0], (Integer) args[1]);
+                    mEventListener.onDisconnected(this, (String) args[0], (Integer) args[1]);
                     break;
                 case ERROR:
                     try {
@@ -108,16 +118,16 @@ public class IrcClient extends Thread {
                         mIn.close();
                         mOut.close();
                     } catch (Exception e) {
-                        mEventListener.onError(e);
+                        mEventListener.onError(this, e);
                     }
 
-                    mEventListener.onError((Exception) args[0]);
+                    mEventListener.onError(this, (Exception) args[0]);
                     break;
                 case SEND:
-                    mEventListener.onSend((String) args[0]);
+                    mEventListener.onSend(this, (String) args[0]);
                     break;
                 case RECEIVE:
-                    mEventListener.onReceive((String) args[0]);
+                    mEventListener.onReceive(this, (String) args[0]);
                     break;
             }
         }
@@ -131,15 +141,15 @@ public class IrcClient extends Thread {
 
         }
 
-        public void onConnected(String host, int port);
+        public void onConnected(IrcClient ircClient, String host, int port);
 
-        public void onDisconnected(String host, int port);
+        public void onDisconnected(IrcClient ircClient, String host, int port);
 
-        public void onError(Exception e);
+        public void onError(IrcClient ircClient, Exception e);
 
-        public void onSend(String text);
+        public void onSend(IrcClient ircClient, String text);
 
-        public void onReceive(String text);
+        public void onReceive(IrcClient ircClient, String text);
 
     }
 

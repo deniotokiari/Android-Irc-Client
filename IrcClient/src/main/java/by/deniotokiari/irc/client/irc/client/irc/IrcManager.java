@@ -1,4 +1,4 @@
-package by.deniotokiari.irc;
+package by.deniotokiari.irc.client.irc.client.irc;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

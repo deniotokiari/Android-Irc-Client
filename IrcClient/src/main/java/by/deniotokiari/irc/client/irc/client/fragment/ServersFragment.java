@@ -1,10 +1,13 @@
 package by.deniotokiari.irc.client.irc.client.fragment;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v4.widget.CursorAdapter;
 import android.support.v4.widget.SimpleCursorAdapter;
@@ -16,53 +19,17 @@ import android.widget.ListView;
 
 import by.deniotokiari.irc.client.irc.client.R;
 import by.deniotokiari.irc.client.irc.client.model.Server;
-import by.istin.android.xcore.fragment.CursorLoaderFragment;
-import by.istin.android.xcore.fragment.CursorLoaderFragmentHelper;
+import by.deniotokiari.irc.client.irc.client.service.IrcService;
 import by.istin.android.xcore.provider.ModelContract;
+import by.istin.android.xcore.utils.CursorUtils;
 
-public class ServersFragment extends DialogFragment implements View.OnClickListener, AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener {
+public class ServersFragment extends DialogFragment implements View.OnClickListener, AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener, LoaderManager.LoaderCallbacks<Cursor> {
 
     private ListView mServers;
     private View mNoData;
     private View mProgress;
 
     private CursorAdapter mAdapter;
-    private CursorLoaderFragment mLoaderFragment = new CursorLoaderFragment() {
-        @Override
-        protected int getViewLayout() {
-            return 0;
-        }
-
-        @Override
-        public Uri getUri() {
-            return ModelContract.getUri(Server.class);
-        }
-
-        @Override
-        public int getLoaderId() {
-            return ServersFragment.this.hashCode();
-        }
-
-        @Override
-        public void showProgress() {
-            setVisibility(mProgress, View.VISIBLE);
-        }
-
-        @Override
-        public void hideProgress() {
-            setVisibility(mProgress, View.GONE);
-        }
-
-        @Override
-        public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
-            mAdapter.swapCursor(data);
-        }
-
-        @Override
-        public void onLoaderReset(Loader<Cursor> loader) {
-            mAdapter.swapCursor(null);
-        }
-    };
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -82,6 +49,8 @@ public class ServersFragment extends DialogFragment implements View.OnClickListe
         View btnCancel = view.findViewById(R.id.cancel);
         View btnAdd = view.findViewById(R.id.add);
 
+        mServers = (ListView) view.findViewById(android.R.id.list);
+        mServers.setOnItemClickListener(this);
         mNoData = view.findViewById(R.id.no_data);
         mProgress = view.findViewById(android.R.id.progress);
 
@@ -92,13 +61,15 @@ public class ServersFragment extends DialogFragment implements View.OnClickListe
 
         mAdapter = new SimpleCursorAdapter(activity, android.R.layout.simple_list_item_2, null, new String[]{Server.NAME, Server.PORT}, new int[]{android.R.id.text1, android.R.id.text2}, 2);
         mServers.setAdapter(mAdapter);
+
+        setVisibility(mProgress, View.VISIBLE);
     }
 
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
 
-        CursorLoaderFragmentHelper.onActivityCreated(mLoaderFragment, null);
+        getLoaderManager().initLoader(hashCode(), null, this);
     }
 
     private void setVisibility(View view, int visibility) {
@@ -123,12 +94,47 @@ public class ServersFragment extends DialogFragment implements View.OnClickListe
     @Override
     public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
         //TODO: open connect to this server
+
+        Cursor cursor = (Cursor) adapterView.getItemAtPosition(i);
+        long id = CursorUtils.getLong(Server._ID, cursor);
+
+        Intent intent = new Intent(getActivity(), IrcService.class);
+        intent.putExtra(IrcService.KEY_SERVER_ID, id);
+        getActivity().startService(intent);
+
+        getDialog().cancel();
     }
 
     @Override
     public boolean onItemLongClick(AdapterView<?> adapterView, View view, int i, long l) {
         //TODO show dialog (delete, edit)
         return false;
+    }
+
+    public Uri getUri() {
+        return ModelContract.getUri(Server.class);
+    }
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+        return new CursorLoader(getActivity(), getUri(), null, null, null, Server.NAME);
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+        if (CursorUtils.isEmpty(data)) {
+            setVisibility(mNoData, View.VISIBLE);
+        } else {
+            setVisibility(mNoData, View.GONE);
+        }
+
+        mAdapter.swapCursor(data);
+        setVisibility(mProgress, View.GONE);
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {
+        mAdapter.swapCursor(null);
     }
 
 }

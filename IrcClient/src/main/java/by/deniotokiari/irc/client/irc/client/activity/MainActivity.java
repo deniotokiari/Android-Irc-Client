@@ -28,7 +28,6 @@ public class MainActivity extends ActionBarActivity {
         setContentView(R.layout.activity_main);
 
         mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer);
-
         mActionBar = getSupportActionBar();
         mDrawerToggle = new ActionBarDrawerToggle(
                 this,
