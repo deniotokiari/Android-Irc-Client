@@ -1,5 +1,6 @@
 package by.deniotokiari.irc.client.irc.client.service;
 
+import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.Service;
 import android.content.ContentValues;
@@ -8,7 +9,9 @@ import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import by.deniotokiari.irc.client.irc.client.R;
 import by.deniotokiari.irc.client.irc.client.irc.Command;
@@ -19,42 +22,52 @@ import by.istin.android.xcore.utils.ContentUtils;
 public class IrcService extends Service implements IrcClient.EventListener {
 
     public static final String KEY_SERVER_ID = "key:server_id";
+    public static final int NOTIFICATION_ID = 42248;
 
-    public AtomicInteger mServersCount = new AtomicInteger();
+    @SuppressLint("UseSparseArrays")
+    private Map<Integer, IrcClient> mIrcClients = Collections.synchronizedMap(new HashMap<Integer, IrcClient>());
 
     private void handleCommand(Intent intent) {
         long id = intent.getLongExtra(KEY_SERVER_ID, 0L);
         ContentValues values = ContentUtils.getEntity(this, Server.class, id);
 
-        IrcClient ircClient = new IrcClient(values, values.getAsString(Server.NAME), values.getAsInteger(Server.PORT), this);
+        IrcClient ircClient = new IrcClient(values, this);
         ircClient.start();
 
-        mServersCount.incrementAndGet();
+        mIrcClients.put(ircClient.hashCode(), ircClient);
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(
-                this)
+        if (mIrcClients.size() == 1) {
+            showNotification();
+        }
+    }
+
+    public void showNotification() {
+        String title = getString(R.string.app_name);
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
                 .setSmallIcon(R.drawable.ic_launcher)
                 .setAutoCancel(false)
-                .setTicker("SERVICE")
-                .setContentText("SERVICE")
+                .setTicker(title)
+                .setContentText(title)
                 .setWhen(System.currentTimeMillis())
-                .setContentTitle(
-                        "SERVICE")
+                .setContentTitle(title)
                 .setOngoing(true);
         Notification notification = builder.build();
-        startForeground(124, notification);
+        startForeground(NOTIFICATION_ID, notification);
     }
 
     public void exitIfZero() {
-        if (mServersCount.get() <= 0) {
+        if (mIrcClients.size() == 0) {
             stopSelf();
         }
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-
+    public boolean removeIrcClient(IrcClient ircClient) {
+        boolean result = mIrcClients.remove(ircClient.hashCode()) != null;
+        if (result) {
+            Server.setOnline(this, ircClient.getContentValues(), false);
+        }
+        return result;
     }
 
     @Override
@@ -70,19 +83,21 @@ public class IrcService extends Service implements IrcClient.EventListener {
 
     @Override
     public void onConnected(IrcClient ircClient, String host, int port) {
-        String nick = ircClient.getContentValues().getAsString(Server.NICK_NAME);
-        ircClient.send(Command.USER.name() + " " + nick + " host servname : d14");
-        ircClient.send(Command.NICK.name() + " " + nick);
+        Server.setOnline(this, ircClient.getContentValues(), true);
     }
 
     @Override
     public void onDisconnected(IrcClient ircClient, String host, int port) {
-
+        if (removeIrcClient(ircClient)) {
+            exitIfZero();
+        }
     }
 
     @Override
     public void onError(IrcClient ircClient, Exception e) {
-
+        if (removeIrcClient(ircClient)) {
+            exitIfZero();
+        }
     }
 
     @Override
@@ -95,12 +110,9 @@ public class IrcService extends Service implements IrcClient.EventListener {
         Log.d("LOG", "onReceive: " + text);
 
         if (text.contains("!join")) {
-            ircClient.send(Command.JOIN.name() + " #wwips");
+            ircClient.send(Command.JOIN + " #wwips");
         } else if (text.contains("!q")) {
             ircClient.disconnect();
-
-            mServersCount.decrementAndGet();
-            exitIfZero();
         }
     }
 

@@ -48,7 +48,8 @@ public class MainActivity extends ActionBarActivity {
         };
         mDrawerLayout.setDrawerListener(mDrawerToggle);
 
-        disableDrawer();
+        disableDrawer(Gravity.LEFT);
+        disableDrawer(Gravity.RIGHT);
 
         showFragmentInRoot(new StartUpFragment());
     }
@@ -82,13 +83,12 @@ public class MainActivity extends ActionBarActivity {
         mDrawerToggle.onConfigurationChanged(newConfig);
     }
 
-    public void enableDrawer() {
-        mDrawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED, Gravity.LEFT);
-        mDrawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED, Gravity.RIGHT);
+    public void enableDrawer(int gravity) {
+        mDrawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED, gravity);
     }
 
-    public void disableDrawer() {
-        mDrawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED, Gravity.LEFT);
+    public void disableDrawer(int gravity) {
+        mDrawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED, gravity);
         mDrawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED, Gravity.RIGHT);
     }
 

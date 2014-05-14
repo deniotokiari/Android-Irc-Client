@@ -7,7 +7,13 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.net.Socket;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import by.deniotokiari.irc.client.irc.client.model.Channel;
+import by.deniotokiari.irc.client.irc.client.model.Server;
+import by.istin.android.xcore.ContextHolder;
+import by.istin.android.xcore.utils.ContentUtils;
 
 public class IrcClient extends Thread {
 
@@ -25,11 +31,24 @@ public class IrcClient extends Thread {
 
     private AtomicBoolean mIsRunning;
 
-    public IrcClient(ContentValues values, String host, int port, EventListener eventListener) {
+    String serverId;
+    String nick;
+    String userName;
+    String realName;
+    String channels;
+
+    public IrcClient(ContentValues values, EventListener eventListener) {
         mContentValues = values;
 
-        mHost = host;
-        mPort = port;
+        serverId = mContentValues.getAsString(Server._ID);
+        nick = mContentValues.getAsString(Server.NICK_NAME);
+        userName = mContentValues.getAsString(Server.USER_NAME);
+        realName = mContentValues.getAsString(Server.REAL_NAME);
+        channels = "";
+
+        mHost = mContentValues.getAsString(Server.HOST);
+        //noinspection ConstantConditions
+        mPort = mContentValues.getAsInteger(Server.PORT);
 
         mEventListener = eventListener;
 
@@ -45,10 +64,12 @@ public class IrcClient extends Thread {
         String msg;
 
         try {
-            while ((msg = mIn.readLine()) != null && mIsRunning.get()) {
+            while (mIsRunning.get() && (msg = mIn.readLine()) != null) {
                 // send PONG if get PING from server
                 if (msg.contains(Command.PING.name())) {
                     send(Command.PONG + " " + msg.split(":")[1]);
+                } else if (msg.contains("001 " + nick + " :")) {
+                    send(Command.JOIN + " " + channels);
                 }
 
                 sendEvent(EventListener.EVENT.RECEIVE, msg);
@@ -64,6 +85,22 @@ public class IrcClient extends Thread {
 
     public synchronized void connect() {
         try {
+            List<ContentValues> list = ContentUtils.getEntities(ContextHolder.getInstance().getContext(),
+                    Channel.class,
+                    Channel.SERVER_ID + " = ?",
+                    serverId
+            );
+
+            if (list != null && !list.isEmpty()) {
+                for (int i = 0; i < list.size(); i++) {
+                    channels += list.get(i).getAsString(Channel.TITLE);
+
+                    if (i < list.size() - 1) {
+                        channels += ",";
+                    }
+                }
+            }
+
             mSocket = new Socket(mHost, mPort);
 
             mOut = new PrintStream(mSocket.getOutputStream());
@@ -71,6 +108,8 @@ public class IrcClient extends Thread {
 
             sendEvent(EventListener.EVENT.CONNECTED, mHost, mPort);
 
+            send(Command.USER + " " + userName + " host servname : " + realName);
+            send(Command.NICK + " " + nick);
         } catch (Exception e) {
             sendEvent(EventListener.EVENT.ERROR, new Exception("error"));//TODO: imp
         }

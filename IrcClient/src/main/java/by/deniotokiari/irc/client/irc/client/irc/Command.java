@@ -176,7 +176,7 @@ public enum Command {
     RULES,
 
     /**
-     * SERVER &lt;servername&gt &lt;hopcount&gt &lt;info&gt
+     * SERVER_ID &lt;servername&gt &lt;hopcount&gt &lt;info&gt
      */
     SERVER,
 

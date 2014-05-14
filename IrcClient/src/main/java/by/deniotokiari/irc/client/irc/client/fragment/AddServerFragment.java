@@ -21,6 +21,7 @@ import by.deniotokiari.irc.client.irc.client.model.Server;
 import by.istin.android.xcore.utils.ContentUtils;
 import by.istin.android.xcore.utils.StringUtil;
 
+@SuppressWarnings("ConstantConditions")
 public class AddServerFragment extends DialogFragment implements View.OnClickListener {
 
     private EditText mServerName;
@@ -154,7 +155,7 @@ public class AddServerFragment extends DialogFragment implements View.OnClickLis
                 final Activity activity = getActivity();
 
                 ContentValues server = new ContentValues();
-                server.put(Server.NAME, serverName);
+                server.put(Server.HOST, serverName);
                 server.put(Server.PORT, port);
                 server.put(Server.COMMANDS, finalCommands);
                 server.put(Server.CONNECT_ON_START_UP, connectOnStartUp);
@@ -174,7 +175,9 @@ public class AddServerFragment extends DialogFragment implements View.OnClickLis
                         for (int i = 0; i < channels.length; i++) {
                             ContentValues item = new ContentValues();
                             item.put(Channel.TITLE, channelsArray[i]);
-                            item.put(Channel.SERVER, serverId);
+                            item.put(Channel.SERVER_ID, serverId);
+                            item.put(Channel.IS_TEMPORARY, false);
+                            item.put(Channel.IS_FIRST_CHANNEL, false);
 
                             channels[i] = item;
                         }
