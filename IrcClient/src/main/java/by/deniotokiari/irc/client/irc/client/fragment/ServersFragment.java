@@ -1,6 +1,7 @@
 package by.deniotokiari.irc.client.irc.client.fragment;
 
 import android.app.Activity;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
@@ -16,11 +17,14 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import by.deniotokiari.irc.client.irc.client.R;
+import by.deniotokiari.irc.client.irc.client.helper.DialogHelper;
 import by.deniotokiari.irc.client.irc.client.model.Server;
 import by.deniotokiari.irc.client.irc.client.service.IrcService;
 import by.istin.android.xcore.provider.ModelContract;
+import by.istin.android.xcore.utils.ContentUtils;
 import by.istin.android.xcore.utils.CursorUtils;
 
 public class ServersFragment extends DialogFragment implements View.OnClickListener, AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener, LoaderManager.LoaderCallbacks<Cursor> {
@@ -51,6 +55,7 @@ public class ServersFragment extends DialogFragment implements View.OnClickListe
 
         mServers = (ListView) view.findViewById(android.R.id.list);
         mServers.setOnItemClickListener(this);
+        mServers.setOnItemLongClickListener(this);
         mNoData = view.findViewById(R.id.no_data);
         mProgress = view.findViewById(android.R.id.progress);
 
@@ -93,7 +98,7 @@ public class ServersFragment extends DialogFragment implements View.OnClickListe
 
     @Override
     public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-        //TODO: open connect to this server
+        Toast.makeText(getActivity(), "Connecting!", Toast.LENGTH_LONG).show();
 
         Cursor cursor = (Cursor) adapterView.getItemAtPosition(i);
         long id = CursorUtils.getLong(Server._ID, cursor);
@@ -106,9 +111,25 @@ public class ServersFragment extends DialogFragment implements View.OnClickListe
     }
 
     @Override
-    public boolean onItemLongClick(AdapterView<?> adapterView, View view, int i, long l) {
-        //TODO show dialog (delete, edit)
-        return false;
+    public boolean onItemLongClick(final AdapterView<?> adapterView, View view, int i, long l) {
+        DialogHelper.show(getActivity(), R.array.server_actions, 0, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                switch (i) {
+                    case 0:
+                        Cursor cursor = (Cursor) adapterView.getItemAtPosition(i);
+                        long id = CursorUtils.getLong(Server._ID, cursor);
+                        ContentUtils.removeEntity(getActivity(), Server.class, id);
+                        break;
+                    case 1:
+                        break;
+                }
+
+                dialogInterface.cancel();
+            }
+        });
+
+        return true;
     }
 
     public Uri getUri() {

@@ -4,71 +4,58 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.provider.BaseColumns;
 
-import java.util.List;
-
-import by.istin.android.xcore.annotations.dbBoolean;
 import by.istin.android.xcore.annotations.dbLong;
 import by.istin.android.xcore.annotations.dbString;
-import by.istin.android.xcore.db.IDBConnection;
-import by.istin.android.xcore.db.entity.IGenerateID;
 import by.istin.android.xcore.db.impl.DBHelper;
-import by.istin.android.xcore.source.DataSourceRequest;
+import by.istin.android.xcore.provider.ModelContract;
 import by.istin.android.xcore.utils.ContentUtils;
 import by.istin.android.xcore.utils.HashUtils;
-import by.istin.android.xcore.utils.StringUtil;
 
-public class Channel implements BaseColumns, IGenerateID {
-
-    @dbString
-    public static final String TITLE = "title";
+public class Channel implements BaseColumns {
 
     @dbLong
-    public static final String SERVER_ID = DBHelper.getForeignKey(Server.class);
+    public static final String ID = _ID;
 
-    @dbBoolean
-    public static final String IS_TEMPORARY = "is_temporary";
+    @dbString
+    public static final String NAME = "name";
 
-    @dbBoolean
-    public static final String IS_FIRST_CHANNEL = "is_first_channel";
+    @dbString
+    public static final String TOPIC = "topic";
 
-    @Override
-    public long generateId(DBHelper dbHelper, IDBConnection db, DataSourceRequest dataSourceRequest, ContentValues contentValues) {
-        return HashUtils.generateId(contentValues.getAsString(TITLE), contentValues.getAsLong(SERVER_ID));
-    }
+    private static final String CHANNEL_ID_SQL = new StringBuilder()
+            .append("SELECT ")
 
-    public static void removeTemporaryChannels(Context context, long serverId) {
-        List<ContentValues> list = ContentUtils.getEntities(
-                context, Channel.class, Channel.SERVER_ID + " = ? AND " + Channel.IS_TEMPORARY + " = ?",
-                String.valueOf(serverId), String.valueOf(1));
-        if (list != null && !list.isEmpty()) {
-            String ids = "";
-            for (int i = 0; i < list.size(); i++) {
-                ids += list.get(i).getAsString(_ID);
+            .append("c." + Channel.ID + " AS " + Channel.ID)
 
-                if (i < list.size() - 1) {
-                    ids += ",";
-                }
-            }
+            .append(" FROM " + DBHelper.getTableName(ServerChannels.class) + " AS sc")
+            .append(" LEFT JOIN " + DBHelper.getTableName(Channel.class) + " AS c")
+            .append(" ON sc." + ServerChannels.CHANNEL_ID + " = c." + Channel.ID)
 
-            if (!StringUtil.isEmpty(ids)) {
-                ContentUtils.removeEntities(context, Message.class, Message.CHANNEL_ID + " IN(?)", ids);
-            }
-        }
+            .append(" WHERE sc." + ServerChannels.SERVER_ID + " = ? AND c." + Channel.NAME + " = ?")
 
-        ContentUtils.removeEntities(
-                context,
-                Channel.class, Channel.SERVER_ID + " = ? AND " + Channel.IS_TEMPORARY + " = ?",
-                String.valueOf(serverId), String.valueOf(1));
-    }
+            .toString();
 
-    public static void addServerChannel(Context context, long serverId) {
+    public static void addChannel(Context context, String name, long serverId) {
         ContentValues values = new ContentValues();
 
-        values.put(SERVER_ID, serverId);
-        values.put(IS_TEMPORARY, true);
-        values.put(IS_FIRST_CHANNEL, true);
+        values.put(NAME, name);
+        values.put(ID, HashUtils.generateId(name, serverId));
 
         ContentUtils.putEntity(context, Channel.class, values);
+    }
+
+    @SuppressWarnings("ConstantConditions")
+    public static long getChannelId(Context context, long serverId, String channelName) {
+        ContentValues values = ContentUtils.getEntity(
+                context,
+                ModelContract.getSQLQueryUri(
+                        CHANNEL_ID_SQL,
+                        ModelContract.getUri(Channel.class)),
+                null, null, new String[]{String.valueOf(serverId),
+                        channelName}
+        );
+
+        return values == null ? 0L : values.getAsLong(Channel.ID);
     }
 
 }

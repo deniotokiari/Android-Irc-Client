@@ -18,7 +18,9 @@ import by.deniotokiari.irc.client.irc.client.R;
 import by.deniotokiari.irc.client.irc.client.helper.PreferencesHelper;
 import by.deniotokiari.irc.client.irc.client.model.Channel;
 import by.deniotokiari.irc.client.irc.client.model.Server;
+import by.deniotokiari.irc.client.irc.client.model.ServerChannels;
 import by.istin.android.xcore.utils.ContentUtils;
+import by.istin.android.xcore.utils.HashUtils;
 import by.istin.android.xcore.utils.StringUtil;
 
 @SuppressWarnings("ConstantConditions")
@@ -163,26 +165,36 @@ public class AddServerFragment extends DialogFragment implements View.OnClickLis
                 server.put(Server.USER_NAME, finalUserName);
                 server.put(Server.REAL_NAME, finalRealName);
 
+                long serverId = System.currentTimeMillis();
+
+                server.put(Server.ID, serverId);
+
                 ContentUtils.putEntity(activity, Server.class, server);
 
                 if (!StringUtil.isEmpty(finalChannels)) {
                     String[] channelsArray = finalChannels.split(",");
 
                     if (channelsArray != null && channelsArray.length > 0) {
-                        long serverId = Server.generateId(server);
 
                         ContentValues[] channels = new ContentValues[channelsArray.length];
+                        ContentValues[] serverChannels = new ContentValues[channelsArray.length];
                         for (int i = 0; i < channels.length; i++) {
                             ContentValues item = new ContentValues();
-                            item.put(Channel.TITLE, channelsArray[i]);
-                            item.put(Channel.SERVER_ID, serverId);
-                            item.put(Channel.IS_TEMPORARY, false);
-                            item.put(Channel.IS_FIRST_CHANNEL, false);
+                            ContentValues item1 = new ContentValues();
+
+                            item.put(Channel.NAME, channelsArray[i]);
+                            item.put(Channel.ID, HashUtils.generateId(channelsArray[i], serverId));
+
+                            item1.put(ServerChannels.CHANNEL_ID, HashUtils.generateId(channelsArray[i], serverId));
+                            item1.put(ServerChannels.IS_TEMPORARY, false);
+                            item1.put(ServerChannels.SERVER_ID, serverId);
 
                             channels[i] = item;
+                            serverChannels[i] = item1;
                         }
 
                         ContentUtils.putEntities(activity, Channel.class, channels);
+                        ContentUtils.putEntities(activity, ServerChannels.class, serverChannels);
                     }
                 }
 

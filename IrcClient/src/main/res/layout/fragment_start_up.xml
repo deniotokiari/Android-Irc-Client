@@ -3,16 +3,24 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
     android:gravity="center"
+    android:background="@android:color/black"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <Button
+    <TextView
+        android:textAllCaps="true"
+        android:textStyle="bold"
+        android:textSize="24sp"
+        android:padding="16dp"
+        android:textColor="@android:color/white"
+        android:gravity="center"
         android:id="@+id/btn_servers"
         android:text="@string/SERVERS"
         style="@style/StartUpButtons"
         android:layout_height="wrap_content" />
 
     <Button
+        android:visibility="gone"
         android:id="@+id/btn_settings"
         android:text="@string/SETTINGS"
         style="@style/StartUpButtons"

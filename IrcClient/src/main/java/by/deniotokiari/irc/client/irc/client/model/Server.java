@@ -6,19 +6,18 @@ import android.provider.BaseColumns;
 
 import by.istin.android.xcore.annotations.dbBoolean;
 import by.istin.android.xcore.annotations.dbInteger;
+import by.istin.android.xcore.annotations.dbLong;
 import by.istin.android.xcore.annotations.dbString;
-import by.istin.android.xcore.db.IDBConnection;
-import by.istin.android.xcore.db.entity.IGenerateID;
 import by.istin.android.xcore.db.impl.DBHelper;
-import by.istin.android.xcore.provider.ModelContract;
-import by.istin.android.xcore.source.DataSourceRequest;
 import by.istin.android.xcore.utils.ContentUtils;
-import by.istin.android.xcore.utils.HashUtils;
 
-public class Server implements BaseColumns, IGenerateID {
+public class Server implements BaseColumns {
+
+    @dbLong
+    public static final String ID = _ID;
 
     @dbString
-    public static final String HOST = "name";
+    public static final String HOST = "host";
 
     @dbInteger
     public static final String PORT = "port";
@@ -27,7 +26,7 @@ public class Server implements BaseColumns, IGenerateID {
     public static final String COMMANDS = "commands";
 
     @dbBoolean
-    public static final String CONNECT_ON_START_UP = "connect_in_start_up";
+    public static final String CONNECT_ON_START_UP = "connect_on_start_up";
 
     @dbString
     public static final String NICK_NAME = "nick_name";
@@ -39,38 +38,40 @@ public class Server implements BaseColumns, IGenerateID {
     public static final String REAL_NAME = "real_name";
 
     @dbBoolean
-    public static final String IS_ONLINE = "is_online";
+    public static final String IS_CONNECTED = "is_connected";
 
-    @Override
-    public long generateId(DBHelper dbHelper, IDBConnection db, DataSourceRequest dataSourceRequest, ContentValues contentValues) {
-        return generateId(contentValues);
-    }
+    private static final String TEMPORARY_MESSAGES = new StringBuilder()
+            .append("SELECT cm." + ChannelMessages.MESSAGE_ID + " AS " + ChannelMessages.MESSAGE_ID)
 
-    public static long generateId(ContentValues contentValues) {
-        return HashUtils.generateId(
-                contentValues.getAsString(HOST),
-                contentValues.getAsInteger(PORT),
-                contentValues.getAsBoolean(CONNECT_ON_START_UP),
-                contentValues.getAsString(COMMANDS),
-                contentValues.getAsString(NICK_NAME),
-                contentValues.getAsString(USER_NAME),
-                contentValues.getAsString(REAL_NAME)
-        );
-    }
+            .append(" FROM " + DBHelper.getTableName(ChannelMessages.class) + " AS cm")
+            .append(" LEFT JOIN " + DBHelper.getTableName(ServerChannels.class) + " AS sc")
+            .append(" ON cm." + ChannelMessages.CHANNEL_ID + " = sc." + ServerChannels.CHANNEL_ID)
 
-    public static void setOnline(Context context, ContentValues values, boolean flag) {
-        //noinspection ConstantConditions
-        long serverId = values.getAsLong(_ID);
-        if (!flag) {
-            Channel.removeTemporaryChannels(context, serverId);
-        } else {
-            Channel.addServerChannel(context, serverId);
-        }
+            .append(" WHERE sc." + ServerChannels.IS_TEMPORARY + " = 1 AND sc." + ServerChannels.SERVER_ID + " = ?")
 
-        values.put(Server.IS_ONLINE, flag);
+            .toString();
+
+    private static final String TEMPORARY_CHANNELS = new StringBuilder()
+            .append("SELECT " + ServerChannels.CHANNEL_ID)
+
+            .append(" FROM " + DBHelper.getTableName(ServerChannels.class))
+            .append(" WHERE " + ServerChannels.IS_TEMPORARY + " = 1 OR " + ServerChannels.IS_TEMPORARY + " NULL AND " + ServerChannels.SERVER_ID + " = ?")
+
+            .toString();
+
+    public static void setIsConnected(Context context, long serverId, boolean flag) {
+        ContentValues values = new ContentValues();
+        values.put(ID, serverId);
+        values.put(IS_CONNECTED, flag);
 
         ContentUtils.putEntity(context, Server.class, values);
-        context.getContentResolver().notifyChange(ModelContract.getUri(Channel.class), null);
+
+        if (!flag) {
+            ContentUtils.removeEntities(context, Message.class, Message.ID + " IN(" + TEMPORARY_MESSAGES + ")", String.valueOf(serverId));
+            ContentUtils.removeEntities(context, ChannelMessages.class, ChannelMessages.CHANNEL_ID + " IN(" + TEMPORARY_CHANNELS + ")", String.valueOf(serverId));
+            ContentUtils.removeEntities(context, Channel.class, Channel.ID + " IN(" + TEMPORARY_CHANNELS + ")", String.valueOf(serverId));
+            ContentUtils.removeEntities(context, ServerChannels.class, ServerChannels.SERVER_ID + " = ?", String.valueOf(serverId));
+        }
     }
 
 }

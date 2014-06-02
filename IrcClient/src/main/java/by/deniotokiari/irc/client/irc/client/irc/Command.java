@@ -2,6 +2,8 @@ package by.deniotokiari.irc.client.irc.client.irc;
 
 public enum Command {
 
+    NONE,
+
     /**
      * ADMIN [&lt;servers&gt;]
      */

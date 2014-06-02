@@ -9,6 +9,7 @@ import android.support.v4.content.Loader;
 import android.support.v4.widget.SimpleCursorAdapter;
 import android.view.Gravity;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.TextView;
 
@@ -18,24 +19,28 @@ import by.deniotokiari.irc.client.irc.client.adapter.CommonCursorAdapter;
 import by.deniotokiari.irc.client.irc.client.cursor.ChannelsCursor;
 import by.deniotokiari.irc.client.irc.client.model.Channel;
 import by.deniotokiari.irc.client.irc.client.model.Server;
+import by.deniotokiari.irc.client.irc.client.model.ServerChannels;
 import by.istin.android.xcore.fragment.AbstractFragment;
 import by.istin.android.xcore.provider.ModelContract;
 import by.istin.android.xcore.utils.CursorUtils;
 
-public class ChannelsFragment extends AbstractFragment implements LoaderManager.LoaderCallbacks<Cursor>, SimpleCursorAdapter.ViewBinder {
+public class ChannelsFragment extends AbstractFragment implements LoaderManager.LoaderCallbacks<Cursor>, SimpleCursorAdapter.ViewBinder, AdapterView.OnItemClickListener {
 
     private ListView mListView;
     private SimpleCursorAdapter mAdapter;
+
+    private boolean mChannelOpened;
 
     @Override
     public void onViewCreated(View view) {
         super.onViewCreated(view);
 
         mListView = (ListView) view.findViewById(android.R.id.list);
+        mListView.setOnItemClickListener(this);
         mAdapter = new CommonCursorAdapter(
                 getActivity(),
-                android.R.layout.simple_list_item_1,
-                new String[]{Channel.TITLE},
+                R.layout.adapter_drawer,
+                new String[]{Channel.NAME},
                 new int[]{android.R.id.text1},
                 this
         );
@@ -52,11 +57,11 @@ public class ChannelsFragment extends AbstractFragment implements LoaderManager.
 
     @Override
     public int getViewLayout() {
-        return R.layout.fragment_channels;
+        return R.layout.fragment_list;
     }
 
     public Uri getUri() {
-        return ModelContract.getSQLQueryUri(ChannelsCursor.SQL, ModelContract.getUri(Channel.class));
+        return ModelContract.getSQLQueryUri(ChannelsCursor.SQL, ModelContract.getUri(ServerChannels.class));
     }
 
     @Override
@@ -70,6 +75,24 @@ public class ChannelsFragment extends AbstractFragment implements LoaderManager.
 
         if (!CursorUtils.isEmpty(data)) {
             ((MainActivity) getActivity()).enableDrawer(Gravity.LEFT);
+
+            if (!mChannelOpened) {
+                mChannelOpened = true;
+
+                final long channelId = CursorUtils.getLong(ServerChannels.CHANNEL_ID, data);
+                final long serverId = CursorUtils.getLong(ServerChannels.SERVER_ID, data);
+                final String channelName = CursorUtils.getString(Channel.NAME, data);
+
+
+                getView().postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        openChannel(channelId, serverId, channelName);
+                    }
+                }, 500L);
+            }
+        } else {
+            ((MainActivity) getActivity()).disableDrawer(Gravity.LEFT);
         }
     }
 
@@ -80,13 +103,38 @@ public class ChannelsFragment extends AbstractFragment implements LoaderManager.
 
     @Override
     public boolean setViewValue(View view, Cursor cursor, int columnIndex) {
-        if (CursorUtils.getBoolean(Channel.IS_FIRST_CHANNEL, cursor)) {
-            TextView textView = (TextView) view;
-            textView.setText(CursorUtils.getString(Server.HOST, cursor));
-            return true;
+        if (cursor.isFirst()) {
+            TextView header = (TextView) view.findViewById(R.id.header);
+
+            if (header != null) {
+                header.setText(CursorUtils.getString(Server.HOST, cursor));
+
+                header.setVisibility(View.VISIBLE);
+            }
         }
 
         return false;
+    }
+
+    public void openChannel(long channelId, long serverId, String channelName) {
+        MainActivity activity = (MainActivity) getActivity();
+
+        activity.closeDrawer(Gravity.RIGHT);
+        ((MainActivity) getActivity()).enableDrawer(Gravity.RIGHT);
+        activity.showFragmentInRoot(MessagesFragment.newInstance(serverId, channelId, channelName));
+        activity.closeDrawer(Gravity.LEFT);
+        activity.updateUsersFragment(channelId, serverId);
+    }
+
+    @Override
+    public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+        Cursor cursor = (Cursor) adapterView.getItemAtPosition(i);
+
+        long channelId = CursorUtils.getLong(ServerChannels.CHANNEL_ID, cursor);
+        long serverId = CursorUtils.getLong(ServerChannels.SERVER_ID, cursor);
+        String channelName = CursorUtils.getString(Channel.NAME, cursor);
+
+        openChannel(channelId, serverId, channelName);
     }
 
 }

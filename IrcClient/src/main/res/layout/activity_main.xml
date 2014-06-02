@@ -16,7 +16,8 @@
         android:layout_gravity="start"
         android:background="@android:color/white" />
 
-    <FrameLayout
+    <fragment
+        android:name="by.deniotokiari.irc.client.irc.client.fragment.UsersFragment"
         android:id="@+id/right_drawer"
         android:layout_width="240dp"
         android:layout_height="match_parent"

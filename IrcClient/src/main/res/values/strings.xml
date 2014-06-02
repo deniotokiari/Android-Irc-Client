@@ -12,4 +12,9 @@
     <string name="SERVERS">Servers</string>
     <string name="SETTINGS">Settings</string>
 
+    <string-array name="server_actions">
+        <item>Delete</item>
+        <item>Modify</item>
+    </string-array>
+
 </resources>

@@ -16,25 +16,43 @@ import by.istin.android.xcore.utils.HashUtils;
 public class Message implements BaseColumns, IGenerateID {
 
     @dbLong
-    public static final String CHANNEL_ID = DBHelper.getForeignKey(Channel.class);
+    public static final String ID = _ID;
 
     @dbString
     public static final String BODY = "body";
 
+    @dbString
+    public static final String NICK = "nick";
+
     @dbLong
     public static final String DATE = "date";
 
+    @dbString
+    public static final String STATUS = "status";
+
     @Override
     public long generateId(DBHelper dbHelper, IDBConnection db, DataSourceRequest dataSourceRequest, ContentValues contentValues) {
+        return generateId(contentValues);
+    }
+
+    public static long generateId(ContentValues contentValues) {
         return HashUtils.generateId(
-                contentValues.getAsLong(CHANNEL_ID),
                 contentValues.getAsString(BODY),
+                contentValues.getAsString(NICK),
                 contentValues.getAsLong(DATE)
         );
     }
 
-    public static void removeMessages(Context context, long channelId) {
-        ContentUtils.removeEntities(context, Channel.class, CHANNEL_ID + " = ?", String.valueOf(channelId));
+    public static void addMessage(Context context, String status, String nick, long channelId, String body) {
+        ContentValues values = new ContentValues();
+
+        values.put(NICK, nick);
+        values.put(STATUS, status);
+        values.put(DATE, System.currentTimeMillis());
+        values.put(BODY, body);
+
+        ContentUtils.putEntity(context, Message.class, values);
+        ChannelMessages.addMessage(context, channelId, generateId(values));
     }
 
 }

@@ -23,6 +23,8 @@ public class StartUpFragment extends Fragment implements View.OnClickListener {
         View btnAddServer = view.findViewById(R.id.btn_servers);
         View btnSettings = view.findViewById(R.id.btn_settings);
 
+        btnSettings.setVisibility(View.GONE);
+
         btnAddServer.setOnClickListener(this);
         btnSettings.setOnClickListener(this);
     }

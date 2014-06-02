@@ -5,16 +5,16 @@ import android.app.Notification;
 import android.app.Service;
 import android.content.ContentValues;
 import android.content.Intent;
+import android.os.Binder;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
-import android.util.Log;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 import by.deniotokiari.irc.client.irc.client.R;
-import by.deniotokiari.irc.client.irc.client.irc.Command;
+import by.deniotokiari.irc.client.irc.client.helper.ParserHelper;
 import by.deniotokiari.irc.client.irc.client.irc.IrcClient;
 import by.deniotokiari.irc.client.irc.client.model.Server;
 import by.istin.android.xcore.utils.ContentUtils;
@@ -24,8 +24,10 @@ public class IrcService extends Service implements IrcClient.EventListener {
     public static final String KEY_SERVER_ID = "key:server_id";
     public static final int NOTIFICATION_ID = 42248;
 
+    private Binder mBinder = new IrcServiceBinder();
+
     @SuppressLint("UseSparseArrays")
-    private Map<Integer, IrcClient> mIrcClients = Collections.synchronizedMap(new HashMap<Integer, IrcClient>());
+    private Map<Long, IrcClient> mIrcClients = Collections.synchronizedMap(new HashMap<Long, IrcClient>());
 
     private void handleCommand(Intent intent) {
         long id = intent.getLongExtra(KEY_SERVER_ID, 0L);
@@ -34,10 +36,21 @@ public class IrcService extends Service implements IrcClient.EventListener {
         IrcClient ircClient = new IrcClient(values, this);
         ircClient.start();
 
-        mIrcClients.put(ircClient.hashCode(), ircClient);
+        mIrcClients.put(id, ircClient);
 
         if (mIrcClients.size() == 1) {
             showNotification();
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+
+        if (mIrcClients != null && !mIrcClients.isEmpty()) {
+            for (Long key : mIrcClients.keySet()) {
+                removeIrcClient(mIrcClients.get(key));
+            }
         }
     }
 
@@ -45,7 +58,7 @@ public class IrcService extends Service implements IrcClient.EventListener {
         String title = getString(R.string.app_name);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
-                .setSmallIcon(R.drawable.ic_launcher)
+                .setSmallIcon(R.drawable.ic_notification)
                 .setAutoCancel(false)
                 .setTicker(title)
                 .setContentText(title)
@@ -58,14 +71,15 @@ public class IrcService extends Service implements IrcClient.EventListener {
 
     public void exitIfZero() {
         if (mIrcClients.size() == 0) {
-            stopSelf();
+            //stopSelf();
+            stopForeground(true);
         }
     }
 
     public boolean removeIrcClient(IrcClient ircClient) {
-        boolean result = mIrcClients.remove(ircClient.hashCode()) != null;
+        boolean result = mIrcClients.remove(ircClient.getServerId()) != null;
         if (result) {
-            Server.setOnline(this, ircClient.getContentValues(), false);
+            Server.setIsConnected(this, ircClient.getServerId(), false);
         }
         return result;
     }
@@ -78,12 +92,12 @@ public class IrcService extends Service implements IrcClient.EventListener {
 
     @Override
     public IBinder onBind(Intent intent) {
-        return null;
+        return mBinder;
     }
 
     @Override
     public void onConnected(IrcClient ircClient, String host, int port) {
-        Server.setOnline(this, ircClient.getContentValues(), true);
+        Server.setIsConnected(this, ircClient.getServerId(), true);
     }
 
     @Override
@@ -95,24 +109,28 @@ public class IrcService extends Service implements IrcClient.EventListener {
 
     @Override
     public void onError(IrcClient ircClient, Exception e) {
-        if (removeIrcClient(ircClient)) {
+        /*if (removeIrcClient(ircClient)) {
             exitIfZero();
-        }
+        }*/
     }
 
     @Override
     public void onSend(IrcClient ircClient, String text) {
-
+        ParserHelper.processOnSend(this, ircClient, text);
     }
 
     @Override
     public void onReceive(IrcClient ircClient, String text) {
-        Log.d("LOG", "onReceive: " + text);
+        ParserHelper.processOnReceive(this, ircClient, text);
+    }
 
-        if (text.contains("!join")) {
-            ircClient.send(Command.JOIN + " #wwips");
-        } else if (text.contains("!q")) {
-            ircClient.disconnect();
+    public IrcClient getIrcClient(long serverId) {
+        return mIrcClients.get(serverId);
+    }
+
+    public class IrcServiceBinder extends Binder {
+        public IrcService getService() {
+            return IrcService.this;
         }
     }
 
